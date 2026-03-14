@@ -15,7 +15,7 @@
   <header class="site-header">
     <div class="header-inner">
       <div class="header-left">
-        <span class="logo-mark">◈</span>
+        <span class="logo-mark">*</span>
         <span class="logo-text">DAKSHINDE</span>
       </div>
       <span id="live-time" class="live-time"></span>
@@ -27,7 +27,7 @@
     <!-- COUNTDOWN -->
     <section class="section section-countdown">
       <div class="countdown-top">
-        <div class="countdown-label">🥇 GOLD MEDAL TARGET</div>
+        <div class="countdown-label">GOLD MEDAL TARGET</div>
         <div class="countdown-date" id="countdown-date">15 Aug 2025</div>
       </div>
       <div class="countdown-numbers">
@@ -57,7 +57,7 @@
       <div class="workout-body" id="workout-body">
         <div class="loading-pill">Loading workout…</div>
       </div>
-      <button class="btn btn-ghost" id="btn-flashcard" onclick="toggleFlashcard()">▤ Flashcard View</button>
+      <button class="btn btn-ghost" id="btn-flashcard" onclick="toggleFlashcard()">Flashcard View</button>
     </section>
 
     <!-- FLASHCARD -->
@@ -99,7 +99,7 @@
       <div class="section-label">DAILY SUMMARY</div>
       <button class="btn btn-primary" onclick="generateSummary()">Generate Summary</button>
       <textarea id="summary-output" class="textarea summary-textarea hidden" readonly rows="14"></textarea>
-      <button class="btn btn-ghost hidden" id="btn-copy-summary" onclick="copySummary()">⎘ Copy for Gemini</button>
+      <button class="btn btn-ghost hidden" id="btn-copy-summary" onclick="copySummary()">Copy for Gemini</button>
     </section>
 
   </main>
@@ -136,7 +136,7 @@
         return `<div class="workout-rest">${swim}</div>`;
       }
       let html = `<div class="swim-card">`;
-      if (swim.duration) html += `<div class="swim-duration">⏱ ${swim.duration}</div>`;
+      if (swim.duration) html += `<div class="swim-duration">${swim.duration}</div>`;
       const fields = [
         ["warm_up",       "WARM UP"],
         ["main_set",      "MAIN SET"],
@@ -159,7 +159,7 @@
     function renderDryland(dry) {
       if (!dry) return "";
       if (typeof dry === "string") {
-        return `<div class="dryland-string">🏋 ${dry}</div>`;
+        return `<div class="dryland-string">DRYLAND: ${dry}</div>`;
       }
       let html = `<div class="dryland-card">`;
       for (const [k, v] of Object.entries(dry)) {
@@ -180,9 +180,9 @@
         // Meta bar (goal + protein)
         const metaEl = document.getElementById("workout-meta");
         if (data.meta && data.meta.goal) {
-          metaEl.innerHTML = `<span class="meta-goal">🎯 ${data.meta.goal}</span>` +
+          metaEl.innerHTML = `<span class="meta-goal">TARGET: ${data.meta.goal}</span>` +
             (data.meta.target_protein
-              ? `<span class="meta-protein">🥩 ${data.meta.target_protein}g protein</span>`
+              ? `<span class="meta-protein">PROTEIN: ${data.meta.target_protein}g</span>`
               : "");
         }
 
@@ -203,12 +203,12 @@
 
         // Diet chip
         if (w.diet_type) {
-          html += `<div class="diet-chip">🍽 ${w.diet_type}</div>`;
+          html += `<div class="diet-chip">DIET: ${w.diet_type}</div>`;
         }
 
         // Commute
         if (w.cardio_commute) {
-          html += `<div class="commute-row">🚴 ${w.cardio_commute}</div>`;
+          html += `<div class="commute-row">COMMUTE: ${w.cardio_commute}</div>`;
         }
 
         // Swim session
@@ -282,7 +282,7 @@
       const sec = document.getElementById("section-flashcard");
       sec.classList.toggle("hidden");
       document.getElementById("btn-flashcard").textContent =
-        sec.classList.contains("hidden") ? "▤ Flashcard View" : "✕ Hide Flashcard";
+        sec.classList.contains("hidden") ? "Flashcard View" : "x Hide Flashcard";
     }
 
     // ── Import ────────────────────────────────────────────────────
@@ -301,7 +301,7 @@
         });
         const data = await res.json();
         if (data.success) {
-          showStatus(statusEl, "✓ Workouts saved.", "success");
+          showStatus(statusEl, "Workouts saved.", "success");
           document.getElementById("import-textarea").value = "";
           loadWorkout();
         } else {
@@ -325,7 +325,7 @@
         const data = await res.json();
         if (data.success) {
           input.value = "";
-          showStatus(statusEl, "✓ Logged", "success");
+          showStatus(statusEl, "Logged", "success");
           loadFoodLog();
         } else {
           showStatus(statusEl, data.error || "Failed.", "error"); }
@@ -375,7 +375,7 @@
       navigator.clipboard.writeText(textarea.value).then(() => {
         const btn = document.getElementById("btn-copy-summary");
         const orig = btn.textContent;
-        btn.textContent = "✓ Copied!";
+        btn.textContent = "Copied!";
         setTimeout(() => btn.textContent = orig, 2000);
       });
     }

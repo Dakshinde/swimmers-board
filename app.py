@@ -9,8 +9,8 @@ WORKOUTS_FILE = "workouts.json"
 FOOD_LOG_FILE = "food_log.json"
 
 # ── Adjust these two dates ────────────────────────────────────────
-COMPETITION_DATE    = date(2025, 8, 15)   # your competition
-TRAINING_START_DATE = date(2025, 3, 1)    # when you started
+COMPETITION_DATE    = date(2026, 8, 15)   # your competition
+TRAINING_START_DATE = date(2026, 3, 1)    # when you started
 # ─────────────────────────────────────────────────────────────────
 
 
