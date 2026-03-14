@@ -1,0 +1,93 @@
+{
+  "user": "Daksh Shinde",
+  "goal": "1:10/100m Swim & V-Taper Shred",
+  "target_protein_grams": 140,
+  "week_plan": [
+    {
+      "day": "Sunday",
+      "focus": "Power Peak (Pool)",
+      "swim_session": {
+        "duration": "45m",
+        "warm_up": "200m Choice + 4x30m Wolphin Kick",
+        "main_set": "8x30m Butterfly Sprints (Max Effort) [Rest: 45s]",
+        "finisher": "4x60m Freestyle (30m Sprint / 30m Easy)",
+        "technical_cue": "Chest Press & Hip Pop"
+      },
+      "dryland": "Meal Prep Day (Soya/Sprouts)",
+      "diet_type": "Mixed"
+    },
+    {
+      "day": "Monday",
+      "focus": "Mental Forge (Land)",
+      "dryland": {
+        "cardio": "3km Run",
+        "strength": "75 Pushups (5x15) [Rest: 60s]",
+        "plyometrics": "Pogos (3x10), Triple Broad Jumps (2x4), Single Leg Hops (3x5)",
+        "mental": "Self-Discipline Rule: Control Emotions"
+      },
+      "swim_session": "POOL CLOSED",
+      "diet_type": "Veg"
+    },
+    {
+      "day": "Tuesday",
+      "focus": "Speed Block (Pool)",
+      "swim_session": {
+        "duration": "45m",
+        "warm_up": "200m Choice + 4x30m Kick with Board",
+        "main_set": "6x60m USRP Sprints (Target: 42s) [Rest: 20s]",
+        "finisher": "8x30m Wall Explosions (Dead Stop)",
+        "technical_cue": "High Elbow Catch"
+      },
+      "dryland": "Cycle 5km to College",
+      "diet_type": "Mixed"
+    },
+    {
+      "day": "Wednesday",
+      "focus": "Strength Forge (Park)",
+      "dryland": {
+        "main_lift": "Negative Pull-ups (5x3-5) [10s Descent]",
+        "push": "Deep Dips (3x Max)",
+        "core": "Hanging Knee Tucks (3x15)",
+        "baseline": "Max Dead Hang (Target: 60s)"
+      },
+      "swim_session": "REST / FOCUS ON CODING",
+      "diet_type": "Mixed"
+    },
+    {
+      "day": "Thursday",
+      "focus": "Endurance (Pool)",
+      "swim_session": {
+        "duration": "45m",
+        "warm_up": "300m Choice + 4x60m Perfect Technique",
+        "main_set": "6x120m Threshold Pace (Consistency) [Rest: 30s]",
+        "finisher": "4x60m Hypoxic Swim (Min Breaths)",
+        "technical_cue": "Ass-to-the-Sky Buoyancy"
+      },
+      "dryland": "Cycle 5km to College",
+      "diet_type": "Veg"
+    },
+    {
+      "day": "Friday",
+      "focus": "Volume (Home)",
+      "dryland": {
+        "strength": "75 Pushups (5x15)",
+        "core": "Hollow Body Holds (3x45s)",
+        "cardio": "Cycle 5km to College"
+      },
+      "swim_session": "REST / FOCUS ON PROJECTS",
+      "diet_type": "Mixed"
+    },
+    {
+      "day": "Saturday",
+      "focus": "The Ritual (Data Day)",
+      "cardio_commute": "13km Cycle (Aerobic Engine)",
+      "swim_session": {
+        "duration": "60m",
+        "main_set": "1.5km Efficiency Test (50 Laps)",
+        "metric_tracking": "Count Strokes Per 30m (Target: 18-22)",
+        "technical_cue": "Head Down, Eyes on Black Line"
+      },
+      "diet_type": "Mixed (High Carb Window Post-Swim)"
+    }
+  ]
+}

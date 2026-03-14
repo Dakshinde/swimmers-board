@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#eaf6ff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Dakshinde / Swim</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-left">
+        <span class="logo-mark">◈</span>
+        <span class="logo-text">DAKSHINDE</span>
+      </div>
+      <span id="live-time" class="live-time"></span>
+    </div>
+  </header>
+
+  <main class="main-content">
+
+    <!-- COUNTDOWN -->
+    <section class="section section-countdown">
+      <div class="countdown-top">
+        <div class="countdown-label">🥇 GOLD MEDAL TARGET</div>
+        <div class="countdown-date" id="countdown-date">15 Aug 2025</div>
+      </div>
+      <div class="countdown-numbers">
+        <div class="cd-block">
+          <div class="cd-num cd-done-num" id="cd-done">—</div>
+          <div class="cd-unit">days done</div>
+        </div>
+        <div class="cd-divider">|</div>
+        <div class="cd-block">
+          <div class="cd-num cd-left-num" id="cd-left">—</div>
+          <div class="cd-unit">days left</div>
+        </div>
+      </div>
+      <div class="countdown-bar-wrap">
+        <div class="countdown-bar-track">
+          <div class="countdown-bar-fill" id="countdown-bar" style="width:0%"></div>
+        </div>
+        <span class="countdown-pct" id="countdown-pct">0%</span>
+      </div>
+    </section>
+
+    <!-- TODAY'S WORKOUT -->
+    <section class="section" id="section-workout">
+      <div class="section-label">TODAY'S WORKOUT</div>
+      <div class="workout-day" id="workout-day">—</div>
+      <div class="workout-meta" id="workout-meta"></div>
+      <div class="workout-body" id="workout-body">
+        <div class="loading-pill">Loading workout…</div>
+      </div>
+      <button class="btn btn-ghost" id="btn-flashcard" onclick="toggleFlashcard()">▤ Flashcard View</button>
+    </section>
+
+    <!-- FLASHCARD -->
+    <section class="section hidden" id="section-flashcard">
+      <div class="section-label">FLASHCARD · 10 × 4.5 cm (landscape)</div>
+      <div class="flashcard-wrap">
+        <div class="flashcard" id="flashcard-content"></div>
+      </div>
+      <p class="hint-text">Screenshot or print at 100% zoom → copy onto water bottle tape.</p>
+    </section>
+
+    <!-- IMPORT -->
+    <section class="section">
+      <div class="section-label">IMPORT WEEKLY WORKOUT</div>
+      <textarea id="import-textarea" class="textarea" rows="6"
+        placeholder='Paste Gemini JSON — supports both simple and rich formats.'></textarea>
+      <button class="btn btn-primary" onclick="importWorkout()">Save Workouts</button>
+      <div class="status-msg" id="import-status"></div>
+    </section>
+
+    <!-- FOOD LOGGER -->
+    <section class="section">
+      <div class="section-label">FOOD LOG</div>
+      <div class="food-input-row">
+        <input type="text" id="food-input" class="input"
+          placeholder="2 eggs milk banana oats"
+          autocomplete="off" autocorrect="off" spellcheck="false" />
+        <button class="btn btn-primary btn-icon" onclick="logFood()">+</button>
+      </div>
+      <div class="status-msg" id="food-status"></div>
+      <div class="section-sublabel">TODAY'S ENTRIES</div>
+      <div id="food-entries" class="food-list">
+        <div class="loading-pill">Loading…</div>
+      </div>
+    </section>
+
+    <!-- SUMMARY -->
+    <section class="section">
+      <div class="section-label">DAILY SUMMARY</div>
+      <button class="btn btn-primary" onclick="generateSummary()">Generate Summary</button>
+      <textarea id="summary-output" class="textarea summary-textarea hidden" readonly rows="14"></textarea>
+      <button class="btn btn-ghost hidden" id="btn-copy-summary" onclick="copySummary()">⎘ Copy for Gemini</button>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">SWIM DASHBOARD · PERSONAL</footer>
+
+  <script>
+    // ── Clock ─────────────────────────────────────────────────────
+    function updateClock() {
+      document.getElementById("live-time").textContent =
+        new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // ── Countdown ─────────────────────────────────────────────────
+    async function loadCountdown() {
+      try {
+        const d = await fetch("/api/countdown").then(r => r.json());
+        document.getElementById("cd-done").textContent = d.days_done;
+        document.getElementById("cd-left").textContent = d.days_left;
+        document.getElementById("countdown-date").textContent = d.competition_date;
+        const pct = d.total_days > 0
+          ? Math.min(100, Math.round((d.days_done / d.total_days) * 100)) : 0;
+        document.getElementById("countdown-bar").style.width = pct + "%";
+        document.getElementById("countdown-pct").textContent = pct + "% complete";
+      } catch(e) {}
+    }
+
+    // ── Workout rendering (supports both Gemini rich + simple) ────
+    function renderSwimSession(swim) {
+      if (!swim) return "";
+      if (typeof swim === "string") {
+        return `<div class="workout-rest">${swim}</div>`;
+      }
+      let html = `<div class="swim-card">`;
+      if (swim.duration) html += `<div class="swim-duration">⏱ ${swim.duration}</div>`;
+      const fields = [
+        ["warm_up",       "WARM UP"],
+        ["main_set",      "MAIN SET"],
+        ["finisher",      "FINISHER"],
+        ["technical_cue", "CUE"],
+        ["metric_tracking","TRACKING"],
+      ];
+      for (const [key, label] of fields) {
+        if (swim[key]) {
+          html += `<div class="swim-row">
+            <div class="swim-row-label">${label}</div>
+            <div class="swim-row-val">${swim[key]}</div>
+          </div>`;
+        }
+      }
+      html += `</div>`;
+      return html;
+    }
+
+    function renderDryland(dry) {
+      if (!dry) return "";
+      if (typeof dry === "string") {
+        return `<div class="dryland-string">🏋 ${dry}</div>`;
+      }
+      let html = `<div class="dryland-card">`;
+      for (const [k, v] of Object.entries(dry)) {
+        html += `<div class="dryland-row">
+          <div class="dryland-label">${k.replace(/_/g," ").toUpperCase()}</div>
+          <div class="dryland-val">${v}</div>
+        </div>`;
+      }
+      html += `</div>`;
+      return html;
+    }
+
+    async function loadWorkout() {
+      try {
+        const data = await fetch("/api/today-workout").then(r => r.json());
+        document.getElementById("workout-day").textContent = data.day || "—";
+
+        // Meta bar (goal + protein)
+        const metaEl = document.getElementById("workout-meta");
+        if (data.meta && data.meta.goal) {
+          metaEl.innerHTML = `<span class="meta-goal">🎯 ${data.meta.goal}</span>` +
+            (data.meta.target_protein
+              ? `<span class="meta-protein">🥩 ${data.meta.target_protein}g protein</span>`
+              : "");
+        }
+
+        const bodyEl = document.getElementById("workout-body");
+        const w = data.workout;
+        if (!w) {
+          bodyEl.innerHTML = `<div class="no-data">No workout set for today.</div>`;
+          renderFlashcard(data.day, null);
+          return;
+        }
+
+        let html = "";
+
+        // Focus badge
+        if (w.focus) {
+          html += `<div class="focus-badge">${w.focus}</div>`;
+        }
+
+        // Diet chip
+        if (w.diet_type) {
+          html += `<div class="diet-chip">🍽 ${w.diet_type}</div>`;
+        }
+
+        // Commute
+        if (w.cardio_commute) {
+          html += `<div class="commute-row">🚴 ${w.cardio_commute}</div>`;
+        }
+
+        // Swim session
+        if (w.swim_session) {
+          html += `<div class="section-sublabel" style="margin-top:0.5rem">SWIM SESSION</div>`;
+          html += renderSwimSession(w.swim_session);
+        }
+
+        // Dryland
+        if (w.dryland) {
+          html += `<div class="section-sublabel" style="margin-top:0.5rem">DRYLAND</div>`;
+          html += renderDryland(w.dryland);
+        }
+
+        // Simple flat format fallback
+        if (!w.swim_session && !w.dryland && !w.focus) {
+          for (const [section, detail] of Object.entries(w)) {
+            html += `<div class="workout-section">
+              <div class="workout-section-label">${section.toUpperCase()}</div>
+              <div class="workout-section-detail">${detail}</div>
+            </div>`;
+          }
+        }
+
+        bodyEl.innerHTML = html;
+        renderFlashcard(data.day, w);
+      } catch(e) {
+        document.getElementById("workout-body").innerHTML =
+          `<div class="no-data">Error loading workout.</div>`;
+      }
+    }
+
+    // ── Flashcard ─────────────────────────────────────────────────
+    function renderFlashcard(day, w) {
+      const el = document.getElementById("flashcard-content");
+      if (!w) { el.textContent = "No workout"; return; }
+
+      let lines = [];
+
+      if (w.focus) lines.push({ type: "focus", text: w.focus });
+
+      const swim = w.swim_session;
+      if (swim && typeof swim === "object") {
+        if (swim.warm_up)  lines.push({ type: "row", label: "WU", text: swim.warm_up });
+        if (swim.main_set) lines.push({ type: "row", label: "MAIN", text: swim.main_set });
+        if (swim.finisher) lines.push({ type: "row", label: "FIN", text: swim.finisher });
+        if (swim.technical_cue) lines.push({ type: "row", label: "CUE", text: swim.technical_cue });
+      } else if (swim && typeof swim === "string") {
+        lines.push({ type: "row", label: "SWIM", text: swim });
+      }
+
+      if (w.dryland && typeof w.dryland === "string") {
+        lines.push({ type: "row", label: "LAND", text: w.dryland });
+      }
+
+      // Simple format fallback
+      if (!w.focus && !w.swim_session) {
+        for (const [k, v] of Object.entries(w)) {
+          lines.push({ type: "row", label: k.substring(0,4).toUpperCase(), text: v });
+        }
+      }
+
+      el.innerHTML = `<span class="fc-day">${(day || "").toUpperCase()}</span>` +
+        lines.map(l => {
+          if (l.type === "focus") return `<span class="fc-focus">${l.text}</span>`;
+          return `<span class="fc-label">${l.label}</span><span class="fc-val">${l.text}</span>`;
+        }).join("");
+    }
+
+    function toggleFlashcard() {
+      const sec = document.getElementById("section-flashcard");
+      sec.classList.toggle("hidden");
+      document.getElementById("btn-flashcard").textContent =
+        sec.classList.contains("hidden") ? "▤ Flashcard View" : "✕ Hide Flashcard";
+    }
+
+    // ── Import ────────────────────────────────────────────────────
+    async function importWorkout() {
+      const raw = document.getElementById("import-textarea").value.trim();
+      const statusEl = document.getElementById("import-status");
+      if (!raw) { showStatus(statusEl, "Paste workout JSON first.", "error"); return; }
+      let parsed;
+      try { parsed = JSON.parse(raw); }
+      catch { showStatus(statusEl, "Invalid JSON — check format.", "error"); return; }
+      try {
+        const res = await fetch("/api/import-workout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(parsed),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showStatus(statusEl, "✓ Workouts saved.", "success");
+          document.getElementById("import-textarea").value = "";
+          loadWorkout();
+        } else {
+          showStatus(statusEl, data.error || "Save failed.", "error");
+        }
+      } catch { showStatus(statusEl, "Network error.", "error"); }
+    }
+
+    // ── Food ──────────────────────────────────────────────────────
+    async function logFood() {
+      const input = document.getElementById("food-input");
+      const statusEl = document.getElementById("food-status");
+      const text = input.value.trim();
+      if (!text) return;
+      try {
+        const res = await fetch("/api/log-food", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ entry: text }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          input.value = "";
+          showStatus(statusEl, "✓ Logged", "success");
+          loadFoodLog();
+        } else {
+          showStatus(statusEl, data.error || "Failed.", "error"); }
+      } catch { showStatus(statusEl, "Network error.", "error"); }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("food-input").addEventListener("keydown", e => {
+        if (e.key === "Enter") logFood();
+      });
+    });
+
+    async function loadFoodLog() {
+      try {
+        const data = await fetch("/api/food-log").then(r => r.json());
+        const el = document.getElementById("food-entries");
+        if (!data.entries || data.entries.length === 0) {
+          el.innerHTML = `<div class="no-data">No food logged today.</div>`; return;
+        }
+        el.innerHTML = data.entries.map(e => {
+          const time = new Date(e.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          return `<div class="food-entry">
+            <span class="food-text">${e.text}</span>
+            <span class="food-time">${time}</span>
+          </div>`;
+        }).join("");
+      } catch {
+        document.getElementById("food-entries").innerHTML =
+          `<div class="no-data">Error loading log.</div>`;
+      }
+    }
+
+    // ── Summary ───────────────────────────────────────────────────
+    async function generateSummary() {
+      try {
+        const data = await fetch("/api/summary").then(r => r.json());
+        const textarea = document.getElementById("summary-output");
+        const copyBtn = document.getElementById("btn-copy-summary");
+        textarea.value = data.summary;
+        textarea.classList.remove("hidden");
+        copyBtn.classList.remove("hidden");
+      } catch { alert("Error generating summary."); }
+    }
+
+    function copySummary() {
+      const textarea = document.getElementById("summary-output");
+      navigator.clipboard.writeText(textarea.value).then(() => {
+        const btn = document.getElementById("btn-copy-summary");
+        const orig = btn.textContent;
+        btn.textContent = "✓ Copied!";
+        setTimeout(() => btn.textContent = orig, 2000);
+      });
+    }
+
+    function showStatus(el, msg, type) {
+      el.textContent = msg;
+      el.className = `status-msg status-${type}`;
+      setTimeout(() => { el.textContent = ""; el.className = "status-msg"; }, 3000);
+    }
+
+    loadCountdown();
+    loadWorkout();
+    loadFoodLog();
+  </script>
+</body>
+</html>
