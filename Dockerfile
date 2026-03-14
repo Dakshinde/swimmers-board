@@ -7,14 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Ensure JSON data files exist
-RUN python -c "
-import json, os
-if not os.path.exists('workouts.json'):
-    json.dump({}, open('workouts.json','w'))
-if not os.path.exists('food_log.json'):
-    json.dump({'entries':[]}, open('food_log.json','w'))
-"
+RUN python -c "import json,os; [open(f,'w').write(d) for f,d in [('workouts.json','{}'),('food_log.json','{\"entries\":[]}')] if not os.path.exists(f)]"
 
 EXPOSE 5000
 
