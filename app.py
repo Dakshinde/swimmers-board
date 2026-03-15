@@ -14,7 +14,9 @@ COMPETITION_DATE    = date(2026, 8, 15)
 TRAINING_START_DATE = date(2026, 3, 14)
 
 # ── MongoDB ────────────────────────────────────────────────────────
-MONGO_URI = os.environ.get("MONGO_URI", "mongodb+srv://dakshinde_db_user:Anish@2002@cluster0.waxw63v.mongodb.net/?appName=Cluster0")
+MONGO_URI = os.environ.get("MONGO_URI", "")
+if not MONGO_URI:
+    raise RuntimeError("MONGO_URI env variable not set. Add it in Railway Variables.")
 client = MongoClient(MONGO_URI, server_api=ServerApi("1"))
 db = client["swim_dashboard"]
 food_col = db["food_log"]
