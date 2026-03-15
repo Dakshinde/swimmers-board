@@ -1,41 +1,27 @@
 from flask import Flask, render_template, request, jsonify
 import json
 import os
-import sqlite3
+import csv
+import io
 from datetime import datetime, date
+from pymongo import MongoClient
+from pymongo.server_api import ServerApi
 
 app = Flask(__name__)
 
-# ── Adjust these two dates ─────────────────────────────────────────
+# ── Dates ──────────────────────────────────────────────────────────
 COMPETITION_DATE    = date(2026, 8, 15)
 TRAINING_START_DATE = date(2026, 3, 14)
-# ──────────────────────────────────────────────────────────────────
 
+# ── MongoDB ────────────────────────────────────────────────────────
+MONGO_URI = os.environ.get("MONGO_URI", "mongodb+srv://dakshinde_db_user:Anish@2002@cluster0.waxw63v.mongodb.net/?appName=Cluster0")
+client = MongoClient(MONGO_URI, server_api=ServerApi("1"))
+db = client["swim_dashboard"]
+food_col = db["food_log"]
+
+# ── Workouts (still JSON — pasted weekly) ─────────────────────────
 WORKOUTS_FILE = "workouts.json"
-DB_PATH = os.environ.get("DB_PATH", "swim.db")
 
-
-# ── Database setup ─────────────────────────────────────────────────
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def init_db():
-    with get_db() as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS food_log (
-                id        INTEGER PRIMARY KEY AUTOINCREMENT,
-                text      TEXT    NOT NULL,
-                date      TEXT    NOT NULL,
-                timestamp TEXT    NOT NULL
-            )
-        """)
-        conn.commit()
-
-
-# ── Workout helpers (still JSON — workouts are pasted weekly) ──────
 def load_workouts():
     if not os.path.exists(WORKOUTS_FILE):
         return {}
@@ -45,11 +31,9 @@ def load_workouts():
         except json.JSONDecodeError:
             return {}
 
-
 def save_workouts(data):
     with open(WORKOUTS_FILE, "w") as f:
         json.dump(data, f, indent=2)
-
 
 def extract_day(raw_data, day_name):
     if "week_plan" in raw_data:
@@ -112,29 +96,29 @@ def log_food():
         return jsonify({"error": "Empty entry"}), 400
 
     now = datetime.now()
-    with get_db() as conn:
-        conn.execute(
-            "INSERT INTO food_log (text, date, timestamp) VALUES (?, ?, ?)",
-            (text, now.strftime("%Y-%m-%d"), now.isoformat())
-        )
-        conn.commit()
-
+    entry = {
+        "text": text,
+        "date": now.strftime("%Y-%m-%d"),
+        "timestamp": now.isoformat(),
+    }
+    result = food_col.insert_one(entry)
     return jsonify({"success": True, "entry": {
+        "id": str(result.inserted_id),
         "text": text,
         "timestamp": now.isoformat(),
-        "date": now.strftime("%Y-%m-%d")
+        "date": now.strftime("%Y-%m-%d"),
     }})
 
 
 @app.route("/api/food-log")
 def get_food_log():
     today = datetime.now().strftime("%Y-%m-%d")
-    with get_db() as conn:
-        rows = conn.execute(
-            "SELECT text, timestamp, date FROM food_log WHERE date = ? ORDER BY id DESC",
-            (today,)
-        ).fetchall()
-    entries = [{"text": r["text"], "timestamp": r["timestamp"], "date": r["date"]} for r in rows]
+    rows = list(food_col.find(
+        {"date": today},
+        {"_id": 1, "text": 1, "timestamp": 1, "date": 1}
+    ).sort("timestamp", -1))
+    entries = [{"id": str(r["_id"]), "text": r["text"],
+                "timestamp": r["timestamp"], "date": r["date"]} for r in rows]
     return jsonify({"entries": entries})
 
 
@@ -143,18 +127,16 @@ def generate_summary():
     today = datetime.now().strftime("%Y-%m-%d")
     date_str = datetime.now().strftime("%A, %d %B %Y")
 
-    # Food only from DB
-    with get_db() as conn:
-        rows = conn.execute(
-            "SELECT text FROM food_log WHERE date = ? ORDER BY id ASC",
-            (today,)
-        ).fetchall()
+    rows = list(food_col.find(
+        {"date": today},
+        {"text": 1}
+    ).sort("timestamp", 1))
     today_food = [r["text"] for r in rows]
 
     lines = ["FOOD SUMMARY", date_str, ""]
     if today_food:
-        for item in today_food:
-            lines.append(f"- {item}")
+        for i, item in enumerate(today_food, 1):
+            lines.append(f"{i}. {item}")
     else:
         lines.append("(no food logged today)")
 
@@ -164,34 +146,33 @@ def generate_summary():
         "",
         "Paste this into Gemini for nutrition analysis."
     ]
-
     return jsonify({"summary": "\n".join(lines)})
 
 
-@app.route("/api/delete-food/<int:entry_id>", methods=["DELETE"])
-def delete_food(entry_id):
-    with get_db() as conn:
-        conn.execute("DELETE FROM food_log WHERE id = ?", (entry_id,))
-        conn.commit()
-    return jsonify({"success": True})
+@app.route("/api/export/food.csv")
+def export_csv():
+    rows = list(food_col.find({}, {"_id": 0, "date": 1, "timestamp": 1, "text": 1}).sort("timestamp", 1))
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["date", "timestamp", "food"])
+    for r in rows:
+        writer.writerow([r.get("date"), r.get("timestamp"), r.get("text")])
+    from flask import Response
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=food_log.csv"}
+    )
+
 
 @app.route("/api/debug/food")
 def debug_food():
-    with get_db() as conn:
-        rows = conn.execute(
-            "SELECT * FROM food_log ORDER BY id DESC LIMIT 20"
-        ).fetchall()
-    return jsonify([dict(r) for r in rows])
-
+    rows = list(food_col.find({}, {"_id": 0}).sort("timestamp", -1).limit(20))
+    return jsonify(rows)
 
 
 if __name__ == "__main__":
-    init_db()
     if not os.path.exists(WORKOUTS_FILE):
         save_workouts({})
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host="0.0.0.0", port=port)
-
-
-# Run init_db on every startup (safe — CREATE TABLE IF NOT EXISTS)
-init_db()
