@@ -175,6 +175,15 @@ def delete_food(entry_id):
         conn.commit()
     return jsonify({"success": True})
 
+@app.route("/api/debug/food")
+def debug_food():
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM food_log ORDER BY id DESC LIMIT 20"
+        ).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+
 
 if __name__ == "__main__":
     init_db()
