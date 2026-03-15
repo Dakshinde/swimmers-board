@@ -7,7 +7,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN python -c "import json,os; [open(f,'w').write(d) for f,d in [('workouts.json','{}'),('food_log.json','{\"entries\":[]}')] if not os.path.exists(f)]"
+RUN mkdir -p /data
+
+ENV DB_PATH=/data/swim.db
 
 EXPOSE 5000
 

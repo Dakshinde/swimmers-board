@@ -1,40 +1,57 @@
 from flask import Flask, render_template, request, jsonify
 import json
 import os
+import sqlite3
 from datetime import datetime, date
 
 app = Flask(__name__)
 
+# ── Adjust these two dates ─────────────────────────────────────────
+COMPETITION_DATE    = date(2026, 8, 15)
+TRAINING_START_DATE = date(2026, 3, 14)
+# ──────────────────────────────────────────────────────────────────
+
 WORKOUTS_FILE = "workouts.json"
-FOOD_LOG_FILE = "food_log.json"
-
-# ── Adjust these two dates ────────────────────────────────────────
-COMPETITION_DATE    = date(2026, 8, 15)   # your competition
-TRAINING_START_DATE = date(2026, 3, 1)    # when you started
-# ─────────────────────────────────────────────────────────────────
+DB_PATH = os.environ.get("DB_PATH", "swim.db")
 
 
-def load_json(filepath):
-    if not os.path.exists(filepath):
+# ── Database setup ─────────────────────────────────────────────────
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    with get_db() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS food_log (
+                id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                text      TEXT    NOT NULL,
+                date      TEXT    NOT NULL,
+                timestamp TEXT    NOT NULL
+            )
+        """)
+        conn.commit()
+
+
+# ── Workout helpers (still JSON — workouts are pasted weekly) ──────
+def load_workouts():
+    if not os.path.exists(WORKOUTS_FILE):
         return {}
-    with open(filepath, "r") as f:
+    with open(WORKOUTS_FILE, "r") as f:
         try:
             return json.load(f)
         except json.JSONDecodeError:
             return {}
 
 
-def save_json(filepath, data):
-    with open(filepath, "w") as f:
+def save_workouts(data):
+    with open(WORKOUTS_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
 
 def extract_day(raw_data, day_name):
-    """
-    Supports two formats:
-    1. Gemini rich format: { "week_plan": [ { "day": "Monday", ... } ] }
-    2. Simple flat format: { "monday": { "warmup": "...", ... } }
-    """
     if "week_plan" in raw_data:
         for entry in raw_data["week_plan"]:
             if entry.get("day", "").lower() == day_name.lower():
@@ -43,40 +60,7 @@ def extract_day(raw_data, day_name):
     return raw_data.get(day_name.lower(), None)
 
 
-def flatten_for_summary(day_data):
-    """Turn a workout dict into plain text lines for the daily summary."""
-    if not day_data:
-        return ["(no workout for today)"]
-
-    lines = []
-    if "focus" in day_data:
-        lines.append(f"Focus: {day_data['focus']}")
-
-    swim = day_data.get("swim_session")
-    if swim and isinstance(swim, dict):
-        lines.append("SWIM SESSION:")
-        for k, v in swim.items():
-            lines.append(f"  {k.replace('_', ' ').title()}: {v}")
-    elif swim and isinstance(swim, str):
-        lines.append(f"Swim: {swim}")
-
-    dryland = day_data.get("dryland")
-    if dryland and isinstance(dryland, dict):
-        lines.append("DRYLAND:")
-        for k, v in dryland.items():
-            lines.append(f"  {k.replace('_', ' ').title()}: {v}")
-    elif dryland and isinstance(dryland, str):
-        lines.append(f"Dryland: {dryland}")
-
-    if "cardio_commute" in day_data:
-        lines.append(f"Commute: {day_data['cardio_commute']}")
-
-    if "diet_type" in day_data:
-        lines.append(f"Diet: {day_data['diet_type']}")
-
-    return lines
-
-
+# ── Routes ─────────────────────────────────────────────────────────
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -84,14 +68,12 @@ def index():
 
 @app.route("/api/today-workout")
 def today_workout():
-    day = datetime.now().strftime("%A")   # e.g. "Monday"
-    raw = load_json(WORKOUTS_FILE)
-
+    day = datetime.now().strftime("%A")
+    raw = load_workouts()
     meta = {}
     if "user" in raw:
         meta["goal"] = raw.get("goal", "")
         meta["target_protein"] = raw.get("target_protein_grams", None)
-
     day_data = extract_day(raw, day)
     return jsonify({"day": day, "workout": day_data, "meta": meta})
 
@@ -99,17 +81,14 @@ def today_workout():
 @app.route("/api/countdown")
 def countdown():
     today = date.today()
-    days_left = (COMPETITION_DATE - today).days
+    days_left = max(0, (COMPETITION_DATE - today).days)
     total_days = (COMPETITION_DATE - TRAINING_START_DATE).days
-    days_done = (today - TRAINING_START_DATE).days
-    days_done = max(0, min(days_done, total_days))
-    days_left = max(0, days_left)
+    days_done = max(0, min((today - TRAINING_START_DATE).days, total_days))
     return jsonify({
         "days_left": days_left,
         "days_done": days_done,
         "total_days": total_days,
         "competition_date": COMPETITION_DATE.strftime("%d %b %Y"),
-        "competition_name": "Gold Medal Target"
     })
 
 
@@ -119,8 +98,8 @@ def import_workout():
         data = request.get_json()
         if not data:
             return jsonify({"error": "No JSON data received"}), 400
-        save_json(WORKOUTS_FILE, data)
-        return jsonify({"success": True, "message": "Workouts saved."})
+        save_workouts(data)
+        return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -128,66 +107,82 @@ def import_workout():
 @app.route("/api/log-food", methods=["POST"])
 def log_food():
     data = request.get_json()
-    entry_text = data.get("entry", "").strip()
-    if not entry_text:
+    text = data.get("entry", "").strip()
+    if not text:
         return jsonify({"error": "Empty entry"}), 400
 
-    food_log = load_json(FOOD_LOG_FILE)
-    if "entries" not in food_log:
-        food_log["entries"] = []
+    now = datetime.now()
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO food_log (text, date, timestamp) VALUES (?, ?, ?)",
+            (text, now.strftime("%Y-%m-%d"), now.isoformat())
+        )
+        conn.commit()
 
-    entry = {
-        "text": entry_text,
-        "timestamp": datetime.now().isoformat(),
-        "date": datetime.now().strftime("%Y-%m-%d"),
-    }
-    food_log["entries"].append(entry)
-    save_json(FOOD_LOG_FILE, food_log)
-    return jsonify({"success": True, "entry": entry})
+    return jsonify({"success": True, "entry": {
+        "text": text,
+        "timestamp": now.isoformat(),
+        "date": now.strftime("%Y-%m-%d")
+    }})
 
 
 @app.route("/api/food-log")
 def get_food_log():
-    food_log = load_json(FOOD_LOG_FILE)
-    entries = food_log.get("entries", [])
     today = datetime.now().strftime("%Y-%m-%d")
-    today_entries = [e for e in entries if e.get("date") == today]
-    return jsonify({"entries": list(reversed(today_entries))})
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT text, timestamp, date FROM food_log WHERE date = ? ORDER BY id DESC",
+            (today,)
+        ).fetchall()
+    entries = [{"text": r["text"], "timestamp": r["timestamp"], "date": r["date"]} for r in rows]
+    return jsonify({"entries": entries})
 
 
 @app.route("/api/summary")
 def generate_summary():
-    day = datetime.now().strftime("%A")
-    raw = load_json(WORKOUTS_FILE)
-    day_data = extract_day(raw, day)
-
-    food_log = load_json(FOOD_LOG_FILE)
-    entries = food_log.get("entries", [])
     today = datetime.now().strftime("%Y-%m-%d")
-    today_food = [e["text"] for e in entries if e.get("date") == today]
-
     date_str = datetime.now().strftime("%A, %d %B %Y")
-    lines = ["DAILY TRAINING SUMMARY", date_str, ""]
 
-    lines.append("FOOD:")
+    # Food only from DB
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT text FROM food_log WHERE date = ? ORDER BY id ASC",
+            (today,)
+        ).fetchall()
+    today_food = [r["text"] for r in rows]
+
+    lines = ["FOOD SUMMARY", date_str, ""]
     if today_food:
         for item in today_food:
-            lines.append(f"  {item}")
+            lines.append(f"- {item}")
     else:
-        lines.append("  (no entries logged)")
+        lines.append("(no food logged today)")
 
-    lines.append("")
-    lines.append("WORKOUT:")
-    for l in flatten_for_summary(day_data):
-        lines.append(f"  {l}")
+    lines += [
+        "",
+        f"Total entries: {len(today_food)}",
+        "",
+        "Paste this into Gemini for nutrition analysis."
+    ]
 
     return jsonify({"summary": "\n".join(lines)})
 
 
+@app.route("/api/delete-food/<int:entry_id>", methods=["DELETE"])
+def delete_food(entry_id):
+    with get_db() as conn:
+        conn.execute("DELETE FROM food_log WHERE id = ?", (entry_id,))
+        conn.commit()
+    return jsonify({"success": True})
+
+
 if __name__ == "__main__":
+    init_db()
     if not os.path.exists(WORKOUTS_FILE):
-        save_json(WORKOUTS_FILE, {})
-    if not os.path.exists(FOOD_LOG_FILE):
-        save_json(FOOD_LOG_FILE, {"entries": []})
+        save_workouts({})
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host="0.0.0.0", port=port)
+
+
+# Run init_db on every startup (safe — CREATE TABLE IF NOT EXISTS)
+init_db()
