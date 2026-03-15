@@ -99,10 +99,77 @@
 
     <!-- SUMMARY -->
     <section class="section">
-      <div class="section-label">DAILY SUMMARY</div>
-      <button class="btn btn-primary" onclick="generateSummary()">Generate Summary</button>
+      <div class="section-label">FOOD SUMMARY</div>
+      <button class="btn btn-primary" onclick="generateSummary()">Generate Food Summary</button>
       <textarea id="summary-output" class="textarea summary-textarea hidden" readonly rows="14"></textarea>
-      <button class="btn btn-ghost hidden" id="btn-copy-summary" onclick="copySummary()">Copy for Gemini</button>
+      <button class="btn btn-ghost hidden" id="btn-copy-summary" onclick="copySummary()">Copy for Gemini Analysis</button>
+    </section>
+
+
+    <!-- NUTRITION REFERENCE -->
+    <section class="section" id="section-nutrition">
+      <div class="section-label">ATHLETE NUTRITION — QUICK REFERENCE</div>
+
+      <div class="nutrition-grid">
+
+        <div class="n-card">
+          <div class="n-card-top"><div class="n-num n-blue">1</div><div class="n-title">Protein target</div></div>
+          <div class="n-body">Aim for 90–100 g per day. You do not need 140 g.
+            <ul><li>Egg, Dal, Curd</li><li>Soya chunks, Peanuts</li><li>Mutton (occasionally)</li></ul>
+            <span class="n-tag n-tag-blue">90–100 g / day</span>
+          </div>
+        </div>
+
+        <div class="n-card">
+          <div class="n-card-top"><div class="n-num n-amber">2</div><div class="n-title">Do not fear carbs</div></div>
+          <div class="n-body">Carbs = fuel for swimming, running, cycling.
+            <ul><li>Rice, Roti, Nachni bhakri</li><li>Potato</li></ul>
+            <span class="n-tag n-tag-teal">Carbs fuel performance</span>
+          </div>
+        </div>
+
+        <div class="n-card">
+          <div class="n-card-top"><div class="n-num n-teal">3</div><div class="n-title">Post-workout rule</div></div>
+          <div class="n-body">After training — carbs + protein within 60 min.
+            <ul><li>Rice + eggs</li><li>Rice + dal</li><li>Curd + rice</li><li>Bread + eggs</li></ul>
+            <span class="n-tag n-tag-teal">Recovery + muscle repair</span>
+          </div>
+        </div>
+
+        <div class="n-card">
+          <div class="n-card-top"><div class="n-num n-green">4</div><div class="n-title">Simple plate method</div></div>
+          <div class="n-body">For most meals:
+            <ul><li>1/2 plate — vegetables</li><li>1/4 plate — carbs</li><li>1/4 plate — protein</li></ul>
+          </div>
+        </div>
+
+        <div class="n-card">
+          <div class="n-card-top"><div class="n-num n-coral">5</div><div class="n-title">Meals per day</div></div>
+          <div class="n-body">3 main meals + 1–2 snacks.
+            <ul><li>Peanuts</li><li>Curd</li><li>Fruit</li></ul>
+          </div>
+        </div>
+
+        <div class="n-card">
+          <div class="n-card-top"><div class="n-num n-purple">6</div><div class="n-title">Sugar + calories</div></div>
+          <div class="n-body">Avoid sugary snacks. Small honey is fine. Aim roughly 2500–2700 kcal. If tired — eat more rice.</div>
+        </div>
+
+      </div>
+
+      <div class="n-card" style="margin-top:0">
+        <div class="n-card-top"><div class="n-num n-gray">7</div><div class="n-title">Progress timeline — be patient</div></div>
+        <div class="n-timeline">
+          <div class="n-tl"><div class="n-tl-week">Weeks 2–4</div><div class="n-tl-desc">Workouts feel easier</div></div>
+          <div class="n-tl"><div class="n-tl-week">Weeks 6–8</div><div class="n-tl-desc">Strength improves</div></div>
+          <div class="n-tl"><div class="n-tl-week">Weeks 8–12</div><div class="n-tl-desc">Visible body changes</div></div>
+        </div>
+      </div>
+
+      <div class="n-golden">
+        <div class="n-golden-label">Golden rule</div>
+        <div class="n-golden-text">Eat balanced meals, train consistently, sleep well, and slightly increase food if energy feels low. Consistency beats perfection.</div>
+      </div>
     </section>
 
   </main>
@@ -141,14 +208,20 @@
       let html = `<div class="swim-card">`;
       if (swim.duration) html += `<div class="swim-duration">${swim.duration}</div>`;
       const fields = [
-        ["warm_up",       "WARM UP"],
-        ["main_set",      "MAIN SET"],
-        ["finisher",      "FINISHER"],
-        ["technical_cue", "CUE"],
+        ["warmup",         "WARM UP"],
+        ["warm_up",        "WARM UP"],
+        ["drills",         "DRILLS"],
+        ["main_set",       "MAIN SET"],
+        ["finisher",       "FINISHER"],
+        ["cooldown",       "COOLDOWN"],
+        ["cool_down",      "COOLDOWN"],
+        ["technical_cue",  "CUE"],
         ["metric_tracking","TRACKING"],
       ];
+      const seen = new Set();
       for (const [key, label] of fields) {
-        if (swim[key]) {
+        if (swim[key] && !seen.has(label)) {
+          seen.add(label);
           html += `<div class="swim-row">
             <div class="swim-row-label">${label}</div>
             <div class="swim-row-val">${swim[key]}</div>
@@ -226,6 +299,11 @@
           html += renderDryland(w.dryland);
         }
 
+        // Activity (simple recovery days)
+        if (w.activity) {
+          html += `<div class="commute-row">Activity: ${w.activity}</div>`;
+        }
+
         // Simple flat format fallback
         if (!w.swim_session && !w.dryland && !w.focus) {
           for (const [section, detail] of Object.entries(w)) {
@@ -255,9 +333,13 @@
 
       const swim = w.swim_session;
       if (swim && typeof swim === "object") {
-        if (swim.warm_up)  lines.push({ type: "row", label: "WU", text: swim.warm_up });
+        const wu = swim.warmup || swim.warm_up;
+        if (wu) lines.push({ type: "row", label: "WU", text: wu });
+        if (swim.drills) lines.push({ type: "row", label: "DRILL", text: swim.drills });
         if (swim.main_set) lines.push({ type: "row", label: "MAIN", text: swim.main_set });
         if (swim.finisher) lines.push({ type: "row", label: "FIN", text: swim.finisher });
+        const cd = swim.cooldown || swim.cool_down;
+        if (cd) lines.push({ type: "row", label: "CD", text: cd });
         if (swim.technical_cue) lines.push({ type: "row", label: "CUE", text: swim.technical_cue });
       } else if (swim && typeof swim === "string") {
         lines.push({ type: "row", label: "SWIM", text: swim });

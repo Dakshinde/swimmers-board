@@ -344,3 +344,32 @@ body {
     padding-right: max(1rem, env(safe-area-inset-right));
   }
 }
+
+
+/* ── Nutrition section ─────────────────────────────────────────── */
+.nutrition-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+.n-card { background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.n-card-top { display: flex; align-items: center; gap: 0.6rem; }
+.n-num { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 500; flex-shrink: 0; }
+.n-blue   { background: #dbeeff; color: #0057a0; }
+.n-amber  { background: #fff3d6; color: #7a4a00; }
+.n-teal   { background: #d6f5eb; color: #0a5c40; }
+.n-green  { background: #e4f5d0; color: #2d5a10; }
+.n-coral  { background: #fde8e0; color: #7a2c10; }
+.n-purple { background: #eeecff; color: #3a2d8a; }
+.n-gray   { background: #f0ede6; color: #3a3a38; }
+.n-title  { font-size: 0.82rem; font-weight: 500; color: var(--text); }
+.n-body   { font-size: 0.75rem; color: var(--text-sub); line-height: 1.55; }
+.n-body ul { margin: 4px 0 0 0; padding-left: 1rem; }
+.n-body li { margin-bottom: 1px; }
+.n-tag    { display: inline-block; font-size: 0.65rem; font-weight: 500; padding: 2px 8px; border-radius: 99px; margin-top: 6px; }
+.n-tag-blue { background: #dbeeff; color: #185fa5; }
+.n-tag-teal { background: #d6f5eb; color: #0f6e56; }
+.n-timeline { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 4px; }
+.n-tl { background: var(--bg); border-radius: var(--radius); padding: 0.5rem 0.6rem; }
+.n-tl-week { font-size: 0.62rem; font-weight: 500; color: var(--text-muted); margin-bottom: 2px; }
+.n-tl-desc { font-size: 0.72rem; color: var(--text); line-height: 1.3; }
+.n-golden { background: #fff8e8; border: 1px solid #f0d070; border-radius: var(--radius); padding: 0.85rem 1rem; }
+.n-golden-label { font-size: 0.6rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: #7a4a00; margin-bottom: 4px; }
+.n-golden-text { font-size: 0.8rem; color: #854f0b; line-height: 1.6; }
+@media (max-width: 400px) { .nutrition-grid { grid-template-columns: 1fr; } .n-timeline { grid-template-columns: 1fr 1fr; } }
