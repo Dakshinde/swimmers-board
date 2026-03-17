@@ -373,3 +373,42 @@ body {
 .n-golden-label { font-size: 0.6rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: #7a4a00; margin-bottom: 4px; }
 .n-golden-text { font-size: 0.8rem; color: #854f0b; line-height: 1.6; }
 @media (max-width: 400px) { .nutrition-grid { grid-template-columns: 1fr; } .n-timeline { grid-template-columns: 1fr 1fr; } }
+
+
+/* ── Notes section ─────────────────────────────────────────────── */
+.notes-input-area { display: flex; flex-direction: column; gap: 0.6rem; }
+.notes-controls { display: flex; gap: 0.5rem; align-items: center; }
+.note-tag-select {
+  flex: 1;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text);
+  font-family: var(--font-mono); font-size: 0.82rem;
+  padding: 0.65rem 0.75rem; outline: none;
+  transition: border-color 0.2s;
+}
+.note-tag-select:focus { border-color: var(--accent); }
+.notes-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.note-item {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 0.75rem 0.85rem;
+  display: flex; flex-direction: column; gap: 0.35rem;
+}
+.note-item-top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.note-tag-pill {
+  font-size: 0.58rem; font-weight: 500; letter-spacing: 0.1em;
+  text-transform: uppercase; padding: 2px 8px; border-radius: 99px;
+  background: var(--accent-light); color: var(--accent);
+}
+.note-tag-pill.coach     { background: #fdf0e0; color: #7a4a00; }
+.note-tag-pill.session   { background: #e1f5ee; color: #0a5c40; }
+.note-tag-pill.technique { background: #eeecff; color: #3a2d8a; }
+.note-tag-pill.nutrition { background: #fde8e0; color: #7a2c10; }
+.note-tag-pill.goal      { background: #eaf3de; color: #2d5a10; }
+.note-meta { font-size: 0.62rem; color: var(--text-muted); letter-spacing: 0.04em; }
+.note-text { font-size: 0.9rem; color: var(--text); line-height: 1.55; }
+.note-delete {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 0.8rem; padding: 2px 6px;
+  border-radius: 4px; transition: color 0.15s;
+}
+.note-delete:hover { color: var(--red); }

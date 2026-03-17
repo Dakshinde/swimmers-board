@@ -106,6 +106,34 @@
     </section>
 
 
+
+    <!-- NOTES -->
+    <section class="section" id="section-notes">
+      <div class="section-label">NOTES & FEEDBACK</div>
+
+      <div class="notes-input-area">
+        <textarea id="note-input" class="textarea" rows="3"
+          placeholder="Coach feedback, how the session felt, something to remember..."></textarea>
+        <div class="notes-controls">
+          <select id="note-tag" class="note-tag-select">
+            <option value="general">General</option>
+            <option value="coach">Coach feedback</option>
+            <option value="session">Session feel</option>
+            <option value="technique">Technique</option>
+            <option value="nutrition">Nutrition</option>
+            <option value="goal">Goal</option>
+          </select>
+          <button class="btn btn-primary" onclick="addNote()">Save Note</button>
+        </div>
+        <div class="status-msg" id="note-status"></div>
+      </div>
+
+      <div class="section-sublabel">RECENT NOTES</div>
+      <div id="notes-list" class="notes-list">
+        <div class="loading-pill">Loading notes...</div>
+      </div>
+    </section>
+
     <!-- NUTRITION REFERENCE -->
     <section class="section" id="section-nutrition">
       <div class="section-label">ATHLETE NUTRITION — QUICK REFERENCE</div>
@@ -412,6 +440,7 @@
           input.value = "";
           showStatus(statusEl, "Logged", "success");
           loadFoodLog();
+    loadNotes();
         } else {
           showStatus(statusEl, data.error || "Failed.", "error"); }
       } catch { showStatus(statusEl, "Network error.", "error"); }
@@ -431,7 +460,7 @@
           el.innerHTML = `<div class="no-data">No food logged today.</div>`; return;
         }
         el.innerHTML = data.entries.map(e => {
-          const time = new Date(e.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          const time = e.time_display || new Date(e.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
           return `<div class="food-entry">
             <span class="food-text">${e.text}</span>
             <span class="food-time">${time}</span>
@@ -471,9 +500,74 @@
       setTimeout(() => { el.textContent = ""; el.className = "status-msg"; }, 3000);
     }
 
+
+    // ── Notes ──────────────────────────────────────────────────────
+    async function addNote() {
+      const input = document.getElementById("note-input");
+      const tag   = document.getElementById("note-tag").value;
+      const statusEl = document.getElementById("note-status");
+      const text = input.value.trim();
+      if (!text) return;
+
+      try {
+        const res = await fetch("/api/add-note", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, tag }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          input.value = "";
+          showStatus(statusEl, "Note saved.", "success");
+          loadNotes();
+        } else {
+          showStatus(statusEl, data.error || "Failed.", "error");
+        }
+      } catch { showStatus(statusEl, "Network error.", "error"); }
+    }
+
+    // Ctrl+Enter to save note
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("note-input").addEventListener("keydown", e => {
+        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) addNote();
+      });
+    });
+
+    async function loadNotes() {
+      try {
+        const data = await fetch("/api/notes").then(r => r.json());
+        const el = document.getElementById("notes-list");
+        if (!data.notes || data.notes.length === 0) {
+          el.innerHTML = `<div class="no-data">No notes yet. Write your first one above.</div>`;
+          return;
+        }
+        el.innerHTML = data.notes.map(n => `
+          <div class="note-item" id="note-${n.id}">
+            <div class="note-item-top">
+              <span class="note-tag-pill ${n.tag}">${n.tag}</span>
+              <span class="note-meta">${n.date_display} &middot; ${n.time_display}</span>
+              <button class="note-delete" onclick="deleteNote('${n.id}')" title="Delete">x</button>
+            </div>
+            <div class="note-text">${n.text}</div>
+          </div>`).join("");
+      } catch {
+        document.getElementById("notes-list").innerHTML =
+          `<div class="no-data">Error loading notes.</div>`;
+      }
+    }
+
+    async function deleteNote(id) {
+      if (!confirm("Delete this note?")) return;
+      try {
+        await fetch(`/api/delete-note/${id}`, { method: "DELETE" });
+        document.getElementById(`note-${id}`)?.remove();
+      } catch {}
+    }
+
     loadCountdown();
     loadWorkout();
     loadFoodLog();
+    loadNotes();
   </script>
 </body>
 </html>
