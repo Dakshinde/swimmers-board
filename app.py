@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response
 import json
 import os
 import csv
@@ -6,6 +6,7 @@ import io
 from datetime import datetime, date, timezone, timedelta
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
+from bson import ObjectId
 
 app = Flask(__name__)
 
@@ -164,24 +165,33 @@ def generate_summary():
 # ── Notes ──────────────────────────────────────────────────────────
 @app.route("/api/add-note", methods=["POST"])
 def add_note():
-    data = request.get_json()
-    text = data.get("text", "").strip()
-    tag  = data.get("tag", "general").strip()
-    if not text:
-        return jsonify({"error": "Empty note"}), 400
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        text = str(data.get("text", "")).strip()
+        tag  = str(data.get("tag", "general")).strip()
+        if not text:
+            return jsonify({"error": "Empty note"}), 400
 
-    now = now_ist()
-    note = {
-        "text": text,
-        "tag": tag,
-        "date": now.strftime("%Y-%m-%d"),
-        "date_display": now.strftime("%d %b %Y"),
-        "time_display": now.strftime("%I:%M %p"),
-        "timestamp": now.strftime("%Y-%m-%dT%H:%M:%S"),
-    }
-    result = notes_col.insert_one(note)
-    note["id"] = str(result.inserted_id)
-    return jsonify({"success": True, "note": note})
+        now = now_ist()
+        date_str    = now.strftime("%Y-%m-%d")
+        date_disp   = now.strftime("%d %b %Y")
+        time_disp   = now.strftime("%I:%M %p")
+        ts          = now.strftime("%Y-%m-%dT%H:%M:%S")
+
+        result = notes_col.insert_one({
+            "text": text, "tag": tag,
+            "date": date_str, "date_display": date_disp,
+            "time_display": time_disp, "timestamp": ts,
+        })
+        return jsonify({"success": True, "note": {
+            "id": str(result.inserted_id),
+            "text": text, "tag": tag,
+            "date": date_str, "date_display": date_disp,
+            "time_display": time_disp, "timestamp": ts,
+        }})
+    except Exception as e:
+        import traceback
+        return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
 
 
 @app.route("/api/notes")
@@ -204,7 +214,6 @@ def get_notes():
 
 @app.route("/api/delete-note/<note_id>", methods=["DELETE"])
 def delete_note(note_id):
-    from bson import ObjectId
     notes_col.delete_one({"_id": ObjectId(note_id)})
     return jsonify({"success": True})
 
@@ -217,7 +226,6 @@ def export_csv():
     writer.writerow(["date", "timestamp", "food"])
     for r in rows:
         writer.writerow([r.get("date"), r.get("timestamp"), r.get("text")])
-    from flask import Response
     return Response(output.getvalue(), mimetype="text/csv",
                     headers={"Content-Disposition": "attachment; filename=food_log.csv"})
 
