@@ -3,7 +3,7 @@ import json
 import os
 import csv
 import io
-from datetime import datetime, date
+from datetime import datetime, date, timezone, timedelta
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 
@@ -13,15 +13,23 @@ app = Flask(__name__)
 COMPETITION_DATE    = date(2026, 8, 15)
 TRAINING_START_DATE = date(2026, 3, 14)
 
+# ── IST timezone (UTC+5:30) ────────────────────────────────────────
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def now_ist():
+    return datetime.now(IST)
+
 # ── MongoDB ────────────────────────────────────────────────────────
 MONGO_URI = os.environ.get("MONGO_URI", "")
 if not MONGO_URI:
     raise RuntimeError("MONGO_URI env variable not set. Add it in Railway Variables.")
+
 client = MongoClient(MONGO_URI, server_api=ServerApi("1"))
 db = client["swim_dashboard"]
-food_col = db["food_log"]
+food_col  = db["food_log"]
+notes_col = db["notes"]
 
-# ── Workouts (still JSON — pasted weekly) ─────────────────────────
+# ── Workouts ───────────────────────────────────────────────────────
 WORKOUTS_FILE = "workouts.json"
 
 def load_workouts():
@@ -54,10 +62,13 @@ def index():
 
 @app.route("/api/today-workout")
 def today_workout():
-    day = datetime.now().strftime("%A")
+    day = now_ist().strftime("%A")
     raw = load_workouts()
     meta = {}
-    if "user" in raw:
+    if "athlete" in raw:
+        meta["goal"] = raw.get("goal", "")
+        meta["target_protein"] = None
+    elif "user" in raw:
         meta["goal"] = raw.get("goal", "")
         meta["target_protein"] = raw.get("target_protein_grams", None)
     day_data = extract_day(raw, day)
@@ -66,7 +77,7 @@ def today_workout():
 
 @app.route("/api/countdown")
 def countdown():
-    today = date.today()
+    today = now_ist().date()
     days_left = max(0, (COMPETITION_DATE - today).days)
     total_days = (COMPETITION_DATE - TRAINING_START_DATE).days
     days_done = max(0, min((today - TRAINING_START_DATE).days, total_days))
@@ -97,58 +108,105 @@ def log_food():
     if not text:
         return jsonify({"error": "Empty entry"}), 400
 
-    now = datetime.now()
+    now = now_ist()
     entry = {
         "text": text,
         "date": now.strftime("%Y-%m-%d"),
-        "timestamp": now.isoformat(),
+        "timestamp": now.strftime("%Y-%m-%dT%H:%M:%S"),
+        "time_display": now.strftime("%I:%M %p"),
     }
     result = food_col.insert_one(entry)
     return jsonify({"success": True, "entry": {
         "id": str(result.inserted_id),
         "text": text,
-        "timestamp": now.isoformat(),
-        "date": now.strftime("%Y-%m-%d"),
+        "timestamp": entry["timestamp"],
+        "time_display": entry["time_display"],
+        "date": entry["date"],
     }})
 
 
 @app.route("/api/food-log")
 def get_food_log():
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = now_ist().strftime("%Y-%m-%d")
     rows = list(food_col.find(
         {"date": today},
-        {"_id": 1, "text": 1, "timestamp": 1, "date": 1}
+        {"_id": 1, "text": 1, "timestamp": 1, "time_display": 1, "date": 1}
     ).sort("timestamp", -1))
-    entries = [{"id": str(r["_id"]), "text": r["text"],
-                "timestamp": r["timestamp"], "date": r["date"]} for r in rows]
+    entries = [{
+        "id": str(r["_id"]),
+        "text": r["text"],
+        "timestamp": r.get("timestamp", ""),
+        "time_display": r.get("time_display", r.get("timestamp", "")[-8:-3] if r.get("timestamp") else ""),
+        "date": r["date"]
+    } for r in rows]
     return jsonify({"entries": entries})
 
 
 @app.route("/api/summary")
 def generate_summary():
-    today = datetime.now().strftime("%Y-%m-%d")
-    date_str = datetime.now().strftime("%A, %d %B %Y")
+    today = now_ist().strftime("%Y-%m-%d")
+    date_str = now_ist().strftime("%A, %d %B %Y")
 
-    rows = list(food_col.find(
-        {"date": today},
-        {"text": 1}
-    ).sort("timestamp", 1))
-    today_food = [r["text"] for r in rows]
+    rows = list(food_col.find({"date": today}, {"text": 1, "time_display": 1}).sort("timestamp", 1))
+    today_food = [(r["text"], r.get("time_display", "")) for r in rows]
 
     lines = ["FOOD SUMMARY", date_str, ""]
     if today_food:
-        for i, item in enumerate(today_food, 1):
-            lines.append(f"{i}. {item}")
+        for i, (item, t) in enumerate(today_food, 1):
+            lines.append(f"{i}. [{t}] {item}")
     else:
         lines.append("(no food logged today)")
 
-    lines += [
-        "",
-        f"Total entries: {len(today_food)}",
-        "",
-        "Paste this into Gemini for nutrition analysis."
-    ]
+    lines += ["", f"Total entries: {len(today_food)}", "", "Paste into Gemini for nutrition analysis."]
     return jsonify({"summary": "\n".join(lines)})
+
+
+# ── Notes ──────────────────────────────────────────────────────────
+@app.route("/api/add-note", methods=["POST"])
+def add_note():
+    data = request.get_json()
+    text = data.get("text", "").strip()
+    tag  = data.get("tag", "general").strip()
+    if not text:
+        return jsonify({"error": "Empty note"}), 400
+
+    now = now_ist()
+    note = {
+        "text": text,
+        "tag": tag,
+        "date": now.strftime("%Y-%m-%d"),
+        "date_display": now.strftime("%d %b %Y"),
+        "time_display": now.strftime("%I:%M %p"),
+        "timestamp": now.strftime("%Y-%m-%dT%H:%M:%S"),
+    }
+    result = notes_col.insert_one(note)
+    note["id"] = str(result.inserted_id)
+    return jsonify({"success": True, "note": note})
+
+
+@app.route("/api/notes")
+def get_notes():
+    rows = list(notes_col.find(
+        {}, {"_id": 1, "text": 1, "tag": 1, "date": 1,
+             "date_display": 1, "time_display": 1, "timestamp": 1}
+    ).sort("timestamp", -1).limit(50))
+    notes = [{
+        "id": str(r["_id"]),
+        "text": r["text"],
+        "tag": r.get("tag", "general"),
+        "date": r.get("date", ""),
+        "date_display": r.get("date_display", ""),
+        "time_display": r.get("time_display", ""),
+        "timestamp": r.get("timestamp", ""),
+    } for r in rows]
+    return jsonify({"notes": notes})
+
+
+@app.route("/api/delete-note/<note_id>", methods=["DELETE"])
+def delete_note(note_id):
+    from bson import ObjectId
+    notes_col.delete_one({"_id": ObjectId(note_id)})
+    return jsonify({"success": True})
 
 
 @app.route("/api/export/food.csv")
@@ -160,11 +218,8 @@ def export_csv():
     for r in rows:
         writer.writerow([r.get("date"), r.get("timestamp"), r.get("text")])
     from flask import Response
-    return Response(
-        output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=food_log.csv"}
-    )
+    return Response(output.getvalue(), mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=food_log.csv"})
 
 
 @app.route("/api/debug/food")
