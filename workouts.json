@@ -1,93 +1,149 @@
 {
-  "user": "Daksh Shinde",
-  "goal": "1:10/100m Swim & V-Taper Shred",
-  "target_protein_grams": 140,
+  "athlete": "Daksh Shinde",
+  "age": 20,
+  "height_cm": 178,
+  "weight_kg": 70,
+
+  "primary_goal": "Open Water 1km–1.5km Endurance",
+  "secondary_goal": "1:10/100m Pace Development",
+  "physique_goal": "V-Taper (Lat Focus + Fat Reduction)",
+
+  "constraints": {
+    "pool_length_m": 30,
+    "pool_session_limit_min": 45,
+    "pool_days_per_week": 4,
+    "commute": {
+      "bus_days": "2-3",
+      "cycle_day": "Saturday (13km total)"
+    }
+  },
+
+  "nutrition": {
+    "daily_protein_target_g": 140,
+    "carb_strategy": {
+      "normal_days": "moderate carbs",
+      "training_days": "high carbs post-swim",
+      "veg_days": "include soya chunks + curd"
+    },
+    "protein_sources": [
+      "eggs",
+      "chicken/mutton",
+      "paneer",
+      "curd",
+      "soya chunks",
+      "dal"
+    ]
+  },
+
+  "training_principles": {
+    "kick_style": "2-beat kick (distance efficiency)",
+    "core_cue": "hollow body",
+    "priority": [
+      "stroke efficiency",
+      "aerobic endurance",
+      "shoulder health",
+      "lat strength"
+    ]
+  },
+
+  "weekly_targets": {
+    "swim_distance_km": "6-7",
+    "strength_days": 1,
+    "recovery_days": 1
+  },
+
   "week_plan": [
     {
       "day": "Sunday",
-      "focus": "Power Peak (Pool)",
+      "focus": "Technique + Smooth Speed",
       "swim_session": {
-        "duration": "45m",
-        "warm_up": "200m Choice + 4x30m Wolphin Kick",
-        "main_set": "8x30m Butterfly Sprints (Max Effort) [Rest: 45s]",
-        "finisher": "4x60m Freestyle (30m Sprint / 30m Easy)",
-        "technical_cue": "Chest Press & Hip Pop"
-      },
-      "dryland": "Meal Prep Day (Soya/Sprouts)",
-      "diet_type": "Mixed"
+        "duration": "45 min",
+        "warmup": "300m easy swim",
+        "drills": "4x30m catch-up + 4x30m fingertip drag",
+        "main_set": "10x60m steady pace (rest 25s)",
+        "finisher": "4x30m fast but relaxed",
+        "cooldown": "120m easy"
+      }
     },
     {
       "day": "Monday",
-      "focus": "Mental Forge (Land)",
+      "focus": "Light Conditioning",
       "dryland": {
-        "cardio": "3km Run",
-        "strength": "75 Pushups (5x15) [Rest: 60s]",
-        "plyometrics": "Pogos (3x10), Triple Broad Jumps (2x4), Single Leg Hops (3x5)",
-        "mental": "Self-Discipline Rule: Control Emotions"
-      },
-      "swim_session": "POOL CLOSED",
-      "diet_type": "Veg"
+        "run": "3km easy",
+        "mobility": "shoulder band rotations 3x15",
+        "core": "plank 3x60s"
+      }
     },
     {
       "day": "Tuesday",
-      "focus": "Speed Block (Pool)",
+      "focus": "Threshold Pace",
       "swim_session": {
-        "duration": "45m",
-        "warm_up": "200m Choice + 4x30m Kick with Board",
-        "main_set": "6x60m USRP Sprints (Target: 42s) [Rest: 20s]",
-        "finisher": "8x30m Wall Explosions (Dead Stop)",
-        "technical_cue": "High Elbow Catch"
-      },
-      "dryland": "Cycle 5km to College",
-      "diet_type": "Mixed"
+        "duration": "45 min",
+        "warmup": "240m easy",
+        "drills": "4x30m single-arm freestyle",
+        "main_set": "6x120m strong pace (rest 40s)",
+        "finisher": "4x60m moderate pace",
+        "cooldown": "120m"
+      }
     },
     {
       "day": "Wednesday",
-      "focus": "Strength Forge (Park)",
+      "focus": "Strength (Pull Dominant)",
       "dryland": {
-        "main_lift": "Negative Pull-ups (5x3-5) [10s Descent]",
-        "push": "Deep Dips (3x Max)",
-        "core": "Hanging Knee Tucks (3x15)",
-        "baseline": "Max Dead Hang (Target: 60s)"
-      },
-      "swim_session": "REST / FOCUS ON CODING",
-      "diet_type": "Mixed"
+        "pullups": "5x5",
+        "pushups": "3x10",
+        "core": "hanging knee raises 3x12",
+        "shoulder_health": "band external rotations 3x15"
+      }
     },
     {
       "day": "Thursday",
-      "focus": "Endurance (Pool)",
+      "focus": "Endurance Intervals",
       "swim_session": {
-        "duration": "45m",
-        "warm_up": "300m Choice + 4x60m Perfect Technique",
-        "main_set": "6x120m Threshold Pace (Consistency) [Rest: 30s]",
-        "finisher": "4x60m Hypoxic Swim (Min Breaths)",
-        "technical_cue": "Ass-to-the-Sky Buoyancy"
-      },
-      "dryland": "Cycle 5km to College",
-      "diet_type": "Veg"
+        "duration": "45 min",
+        "warmup": "300m",
+        "drills": "4x30m sculling",
+        "main_set": "4x240m steady pace (rest 45s)",
+        "cooldown": "120m"
+      }
     },
     {
       "day": "Friday",
-      "focus": "Volume (Home)",
-      "dryland": {
-        "strength": "75 Pushups (5x15)",
-        "core": "Hollow Body Holds (3x45s)",
-        "cardio": "Cycle 5km to College"
-      },
-      "swim_session": "REST / FOCUS ON PROJECTS",
-      "diet_type": "Mixed"
+      "focus": "Recovery",
+      "activity": "light stretching or easy cycle 5km"
     },
     {
       "day": "Saturday",
-      "focus": "The Ritual (Data Day)",
-      "cardio_commute": "13km Cycle (Aerobic Engine)",
+      "focus": "Long Swim Simulation",
+      "cardio_commute": "13km cycling total",
       "swim_session": {
-        "duration": "60m",
-        "main_set": "1.5km Efficiency Test (50 Laps)",
-        "metric_tracking": "Count Strokes Per 30m (Target: 18-22)",
-        "technical_cue": "Head Down, Eyes on Black Line"
-      },
-      "diet_type": "Mixed (High Carb Window Post-Swim)"
+        "duration": "60 min",
+        "warmup": "240m easy",
+        "main_set": "1500m continuous swim",
+        "metric_tracking": "stroke count per 30m",
+        "cooldown": "120m"
+      }
     }
-  ]
+  ],
+
+  "weekly_tracking": {
+    "long_swim_time_1500m": "target: reduce weekly",
+    "stroke_count_per_30m": "target: 18-20",
+    "threshold_effort": "target: 7/10",
+    "shoulder_soreness": "keep below 6/10"
+  },
+
+  "progress_targets": {
+    "4_weeks": {
+      "1500m_time": "30:00",
+      "stroke_count": 19
+    },
+    "8_weeks": {
+      "1500m_time": "28:30",
+      "stroke_count": 18
+    },
+    "12_weeks": {
+      "1500m_time": "27:00"
+    }
+  }
 }
