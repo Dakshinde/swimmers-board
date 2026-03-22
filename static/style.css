@@ -487,3 +487,46 @@ body {
   letter-spacing: 0.08em;
   font-weight: 500;
 }
+
+/* ── Goal chips ────────────────────────────────────────────────── */
+.goal-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.goal-chip {
+  font-size: 0.65rem; font-weight: 500; letter-spacing: 0.06em;
+  padding: 3px 10px; border-radius: 99px;
+}
+.chip-blue   { background: #dbeeff; color: #0057a0; }
+.chip-teal   { background: #d6f5eb; color: #0a5c40; }
+.chip-purple { background: #eeecff; color: #3a2d8a; }
+
+/* ── Session note ──────────────────────────────────────────────── */
+.session-note {
+  font-size: 0.82rem; color: #7a4a00;
+  background: #fff8e8; border: 1px solid #f0d070;
+  border-left: 3px solid #d4a017; border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 0.55rem 0.75rem; line-height: 1.5;
+}
+
+/* ── Phase blocks (Wednesday dryland) ─────────────────────────── */
+.phase-block { margin-bottom: 0.75rem; }
+.phase-block:last-child { margin-bottom: 0; }
+.phase-label {
+  font-size: 0.62rem; font-weight: 500; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--accent);
+  margin-bottom: 0.4rem;
+}
+
+/* ── Carb strategy cards ───────────────────────────────────────── */
+.carb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+.carb-card {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 0.65rem 0.75rem;
+  display: flex; flex-direction: column; gap: 0.25rem;
+}
+.carb-when {
+  font-size: 0.6rem; font-weight: 500; letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.carb-when.pre  { color: #7a4a00; }
+.carb-when.post { color: #0a5c40; }
+.carb-when.night { color: #3a2d8a; }
+.carb-what { font-size: 0.8rem; color: var(--text); line-height: 1.4; }

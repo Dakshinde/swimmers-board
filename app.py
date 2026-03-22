@@ -66,12 +66,21 @@ def today_workout():
     day = now_ist().strftime("%A")
     raw = load_workouts()
     meta = {}
-    if "athlete" in raw:
-        meta["goal"] = raw.get("goal", "")
-        meta["target_protein"] = None
-    elif "user" in raw:
-        meta["goal"] = raw.get("goal", "")
-        meta["target_protein"] = raw.get("target_protein_grams", None)
+
+    # Support both old and new JSON formats
+    meta["goal"]           = raw.get("goal", raw.get("primary_goal", ""))
+    meta["primary_goal"]   = raw.get("primary_goal", "")
+    meta["secondary_goal"] = raw.get("secondary_goal", "")
+    meta["tertiary_goal"]  = raw.get("tertiary_goal", "")
+    meta["physique_goal"]  = raw.get("physique_goal", "")
+    meta["target_protein"] = raw.get("target_protein_grams",
+                               raw.get("nutrition", {}).get("daily_protein_target_g", None))
+
+    # Nutrition carb strategy
+    nutrition = raw.get("nutrition", {})
+    meta["carb_strategy"]   = nutrition.get("carb_strategy", None)
+    meta["protein_sources"] = nutrition.get("protein_sources", [])
+
     day_data = extract_day(raw, day)
     return jsonify({"day": day, "workout": day_data, "meta": meta})
 
@@ -235,6 +244,11 @@ def debug_food():
     rows = list(food_col.find({}, {"_id": 0}).sort("timestamp", -1).limit(20))
     return jsonify(rows)
 
+
+
+@app.route("/ping")
+def ping():
+    return jsonify({"status": "ok"}), 200
 
 if __name__ == "__main__":
     if not os.path.exists(WORKOUTS_FILE):

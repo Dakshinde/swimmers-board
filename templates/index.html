@@ -103,6 +103,11 @@
           </div>
         </section>
 
+        <section class="section" id="section-carb-strategy" style="display:none">
+          <div class="section-label">CARB STRATEGY</div>
+          <div id="carb-strategy-body"></div>
+        </section>
+
         <section class="section">
           <div class="section-label">FOOD SUMMARY</div>
           <button class="btn btn-primary" onclick="generateSummary()">Generate Summary</button>
@@ -273,7 +278,10 @@
       for (const [key, label] of fields) {
         if (swim[key] && !seen.has(label)) {
           seen.add(label);
-          html += `<div class="swim-row"><div class="swim-row-label">${label}</div><div class="swim-row-val">${swim[key]}</div></div>`;
+          const val = typeof swim[key] === "object"
+            ? Object.entries(swim[key]).map(([wk,v]) => `${wk.replace(/_/g," ")}: ${v}`).join(" · ")
+            : swim[key];
+          html += `<div class="swim-row"><div class="swim-row-label">${label}</div><div class="swim-row-val">${val}</div></div>`;
         }
       }
       html += `</div>`;
@@ -283,9 +291,36 @@
     function renderDryland(dry) {
       if (!dry) return "";
       if (typeof dry === "string") return `<div class="dryland-string">Dryland: ${dry}</div>`;
+
+      // Detect phased dryland (Wednesday) — keys are phase_1, phase_2, phase_3
+      const phaseKeys = Object.keys(dry).filter(k => k.startsWith("phase_"));
+      if (phaseKeys.length > 0) {
+        let html = "";
+        for (const pk of phaseKeys) {
+          const phase = dry[pk];
+          const weeks = phase.weeks || "";
+          html += `<div class="phase-block">`;
+          html += `<div class="phase-label">Phase ${pk.replace("phase_","")} — Weeks ${weeks}</div>`;
+          html += `<div class="dryland-card">`;
+          for (const [k, v] of Object.entries(phase)) {
+            if (k === "weeks") continue;
+            const val = typeof v === "object" ? JSON.stringify(v) : v;
+            html += `<div class="dryland-row"><div class="dryland-label">${k.replace(/_/g," ").toUpperCase()}</div><div class="dryland-val">${val}</div></div>`;
+          }
+          html += `</div></div>`;
+        }
+        return html;
+      }
+
+      // Standard dryland object
       let html = `<div class="dryland-card">`;
       for (const [k, v] of Object.entries(dry)) {
-        html += `<div class="dryland-row"><div class="dryland-label">${k.replace(/_/g," ").toUpperCase()}</div><div class="dryland-val">${v}</div></div>`;
+        if (typeof v === "object" && v !== null) {
+          // nested object (e.g. Friday activity)
+          html += `<div class="dryland-row"><div class="dryland-label">${k.replace(/_/g," ").toUpperCase()}</div><div class="dryland-val">${Object.entries(v).map(([ek,ev]) => `${ek.replace(/_/g," ")}: ${ev}`).join(" · ")}</div></div>`;
+        } else {
+          html += `<div class="dryland-row"><div class="dryland-label">${k.replace(/_/g," ").toUpperCase()}</div><div class="dryland-val">${v}</div></div>`;
+        }
       }
       html += `</div>`;
       return html;
@@ -296,8 +331,9 @@
         const data = await fetch("/api/today-workout").then(r => r.json());
         document.getElementById("workout-day").textContent = data.day || "—";
         const metaEl = document.getElementById("workout-meta");
-        if (data.meta && data.meta.goal) {
-          metaEl.innerHTML = `<span class="meta-goal">TARGET: ${data.meta.goal}</span>` +
+        if (data.meta && (data.meta.goal || data.meta.target_protein)) {
+          metaEl.innerHTML =
+            (data.meta.goal ? `<span class="meta-goal">TARGET: ${data.meta.goal}</span>` : "") +
             (data.meta.target_protein ? `<span class="meta-protein">PROTEIN: ${data.meta.target_protein}g</span>` : "");
         }
         const bodyEl = document.getElementById("workout-body");
@@ -305,11 +341,41 @@
         if (!w) { bodyEl.innerHTML = `<div class="no-data">No workout set for today.</div>`; renderFlashcard(data.day, null); return; }
         let html = "";
         if (w.focus) html += `<div class="focus-badge">${w.focus}</div>`;
+
+        // Goal chips from top-level JSON
+        if (data.meta) {
+          const chips = [];
+          if (data.meta.primary_goal)  chips.push({label: data.meta.primary_goal,  cls: "chip-blue"});
+          if (data.meta.secondary_goal) chips.push({label: data.meta.secondary_goal, cls: "chip-teal"});
+          if (data.meta.tertiary_goal)  chips.push({label: data.meta.tertiary_goal,  cls: "chip-purple"});
+          if (chips.length) {
+            html += `<div class="goal-chips">` + chips.map(c =>
+              `<span class="goal-chip ${c.cls}">${c.label}</span>`
+            ).join("") + `</div>`;
+          }
+        }
+
+        // Session note highlight (Tuesday, Friday)
+        if (w.note) html += `<div class="session-note">${w.note}</div>`;
+
         if (w.diet_type) html += `<div class="diet-chip">DIET: ${w.diet_type}</div>`;
         if (w.cardio_commute) html += `<div class="commute-row">COMMUTE: ${w.cardio_commute}</div>`;
+        if (w.location) html += `<div class="commute-row">LOCATION: ${w.location}</div>`;
         if (w.swim_session) { html += `<div class="section-sublabel" style="margin-top:0.5rem">SWIM SESSION</div>`; html += renderSwimSession(w.swim_session); }
         if (w.dryland) { html += `<div class="section-sublabel" style="margin-top:0.5rem">DRYLAND</div>`; html += renderDryland(w.dryland); }
-        if (w.activity) html += `<div class="commute-row">Activity: ${w.activity}</div>`;
+        if (w.activity) {
+          const act = w.activity;
+          if (typeof act === "string") {
+            html += `<div class="commute-row">Activity: ${act}</div>`;
+          } else {
+            html += `<div class="section-sublabel" style="margin-top:0.5rem">ACTIVITY</div>`;
+            html += `<div class="dryland-card">`;
+            for (const [k, v] of Object.entries(act)) {
+              html += `<div class="dryland-row"><div class="dryland-label">${k.replace(/_/g," ").toUpperCase()}</div><div class="dryland-val">${v}</div></div>`;
+            }
+            html += `</div>`;
+          }
+        }
         if (!w.swim_session && !w.dryland && !w.focus) {
           for (const [section, detail] of Object.entries(w)) {
             html += `<div class="workout-section"><div class="workout-section-label">${section.toUpperCase()}</div><div class="workout-section-detail">${detail}</div></div>`;
@@ -320,6 +386,33 @@
       } catch(e) {
         document.getElementById("workout-body").innerHTML = `<div class="no-data">Error loading workout.</div>`;
       }
+    }
+
+    async function loadCarbStrategy() {
+      try {
+        const data = await fetch("/api/today-workout").then(r => r.json());
+        const carb = data.meta && data.meta.carb_strategy;
+        if (!carb) return;
+        const sec = document.getElementById("section-carb-strategy");
+        const body = document.getElementById("carb-strategy-body");
+        if (sec) sec.style.display = "";
+        if (body) {
+          body.innerHTML = `<div class="carb-grid">
+            <div class="carb-card">
+              <div class="carb-when pre">Pre-swim</div>
+              <div class="carb-what">${carb.pre_swim || "—"}</div>
+            </div>
+            <div class="carb-card">
+              <div class="carb-when post">Post-swim</div>
+              <div class="carb-what">${carb.post_swim || "—"}</div>
+            </div>
+            <div class="carb-card">
+              <div class="carb-when night">Night</div>
+              <div class="carb-what">${carb.night || "—"}</div>
+            </div>
+          </div>`;
+        }
+      } catch(e) {}
     }
 
     function renderFlashcard(day, w) {
@@ -507,6 +600,7 @@
     loadWorkout();
     loadFoodLog();
     loadNotes();
+    loadCarbStrategy();
   </script>
 </body>
 </html>
